@@ -7,7 +7,6 @@ const Sidebar = () => {
     return (
         <aside className="sidebar">
             <ActivityBar />
-
             <div className="sidebar-content">
                 <UserList />
                 <Chat />
