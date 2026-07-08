@@ -1,0 +1,22 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html,
+body,
+#root{
+    height:100%;
+    background:#1e1e1e;
+    color:#ffffff;
+    font-family:Segoe UI, sans-serif;
+}
+
+.app-layout{
+    display:grid;
+
+    grid-template-columns:300px 1fr;
+
+    height:calc(100vh - 70px);
+}
