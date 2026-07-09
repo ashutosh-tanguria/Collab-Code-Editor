@@ -8,3 +8,32 @@
     padding:0 25px;
     border-bottom:1px solid #3c3c3c;
 }
+.logo{
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:0.5px;
+}
+
+.room-info{
+    font-size:15px;
+    color:#c5c5c5;
+}
+
+.copy-btn{
+    background:#0078d4;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    transition:0.2s;
+}
+
+.copy-btn:hover{
+    background:#0a84ea;
+}
+
+.copy-btn:active{
+    transform:scale(0.97);
+}

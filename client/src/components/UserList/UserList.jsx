@@ -1,13 +1,17 @@
 import "./UserList.css";
 
-const UserList = () => {
+const UserList = ({ users }) => {
     return (
         <div className="user-list">
-            <h3>Active Users</h3>
-
-            <div className="user">
-                You
-            </div>
+            <h3>Active Users ({users.length})</h3>
+            {users.map((user) => (
+                <div
+                    key={user.username}
+                    className="user"
+                >
+                    🟢 {user.username}
+                </div>
+            ))}
         </div>
     );
 };

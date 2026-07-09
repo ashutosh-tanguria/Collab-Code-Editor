@@ -2,6 +2,7 @@ import "./FileTabs.css";
 import { useState } from "react";
 
 const FileTabs = ({
+    roomId,
     socket,
     files,
     activeFileId,
@@ -29,6 +30,27 @@ const FileTabs = ({
             })
         );
         setActiveFileId(newFile.id);
+    };
+    const handleDeleteFile = (fileId) => {
+
+        const updatedFiles = files.filter(
+            (file) => file.id !== fileId
+        );
+
+        setFiles(updatedFiles);
+
+        if (activeFileId === fileId && updatedFiles.length > 0) {
+            setActiveFileId(updatedFiles[0].id);
+        }
+
+        socket.send(
+            JSON.stringify({
+                type: "DELETE_FILE",
+                roomId,
+                fileId
+            })
+        );
+
     };
     return (
         <div className="file-tabs">
@@ -61,6 +83,14 @@ const FileTabs = ({
                                                 return f;
                                             })
                                         );
+                                        socket.send(
+                                            JSON.stringify({
+                                                type: "RENAME_FILE",
+                                                roomId,
+                                                fileId: file.id,
+                                                newName: tempName
+                                            })
+                                        );
                                         setEditingFileId(null);
                                     }
                                 }}
@@ -69,7 +99,23 @@ const FileTabs = ({
                                 }}
                             />
                         ) : (
-                            file.name
+                            <div className="tab-content">
+
+                                <span>{file.name}</span>
+
+                                {file.name !== "main.js" && (
+                                    <button
+                                        className="delete-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteFile(file.id);
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                )}
+
+                            </div>
                         )
                     }
                 </div>

@@ -1,51 +1,57 @@
 const { WebSocketServer } = require("ws");
 const rooms = require("./rooms");
-
 const wss = new WebSocketServer({ port: 8000 });
-
 console.log("WebSocket Server Started");
 
 wss.on("connection", (socket) => {
     console.log("Client Connected");
-
     socket.on("message", (message) => {
-
-        // Parse incoming message
         const data = JSON.parse(message.toString());
         console.log("Message from Client:", data);
+
         if (data.type === "JOIN_ROOM") {
 
             if (!rooms[data.roomId]) {
                 rooms[data.roomId] = {
                     users: [],
-                    files: [
-                        {
-                            id: "main",
-                            name: "main.js",
-                            code: "// Start Coding..."
-                        }
-                    ]
+                    files: data.files
                 };
             }
 
+            rooms[data.roomId].users.push(socket);
+            socket.roomId = data.roomId;
+            socket.username = data.username;
             for (const client of rooms[data.roomId].users) {
-                if (client !== socket) {
-                    client.send(
-                        JSON.stringify({
-                            type: "USER_JOINED",
-                            message: "A new user has joined the room."
-                        })
-                    );
-                }
+
+                client.send(
+                    JSON.stringify({
+                        type: "SYSTEM_MESSAGE",
+                        message: `${data.username} joined the room`
+                    })
+                );
+
             }
 
-            rooms[data.roomId].users.push(socket);
             socket.send(
                 JSON.stringify({
                     type: "INITIAL_FILES",
                     files: rooms[data.roomId].files
                 })
             );
+            const users = rooms[data.roomId].users.map((user) => ({
+                username: user.username
+            }));
+
+            for (const client of rooms[data.roomId].users) {
+
+                client.send(
+                    JSON.stringify({
+                        type: "USERS_UPDATE",
+                        users
+                    })
+                );
+
+            }
             console.log(rooms);
             console.log(rooms[data.roomId].users.length);
         }
@@ -61,7 +67,6 @@ wss.on("connection", (socket) => {
                     }
                     return file;
                 });
-
             for (const client of rooms[data.roomId].users) {
                 if (client !== socket) {
                     client.send(
@@ -77,6 +82,7 @@ wss.on("connection", (socket) => {
 
         if (data.type === "ADD_FILE") {
             rooms[data.roomId].files.push(data.file);
+
             for (const client of rooms[data.roomId].users) {
                 if (client !== socket) {
                     client.send(
@@ -88,19 +94,109 @@ wss.on("connection", (socket) => {
                 }
             }
         }
-    });
 
-    socket.on("close", () => {
-        for (const roomId in rooms) {
-            const room = rooms[roomId];
-            const index = room.users.indexOf(socket);
-            if (index !== -1) {
-                room.users.splice(index, 1);
-                if (room.users.length === 0) {
-                    delete rooms[roomId];
+        if (data.type === "RENAME_FILE") {
+            rooms[data.roomId].files =
+                rooms[data.roomId].files.map((file) => {
+                    if (file.id === data.fileId) {
+                        return {
+                            ...file,
+                            name: data.newName
+                        };
+                    }
+                    return file;
+                });
+            for (const client of rooms[data.roomId].users) {
+                if (client !== socket) {
+                    client.send(
+                        JSON.stringify({
+                            type: "RENAME_FILE",
+                            fileId: data.fileId,
+                            newName: data.newName
+                        })
+                    );
                 }
-                console.log("Client Disconnected");
             }
         }
+
+        if (data.type === "USERNAME_CHANGE") {
+            socket.username = data.username;
+            const users = rooms[data.roomId].users.map((user) => ({
+                username: user.username
+            }));
+            for (const client of rooms[data.roomId].users) {
+                client.send(
+                    JSON.stringify({
+                        type: "USERS_UPDATE",
+                        users
+                    })
+                );
+            }
+        }
+
+        if (data.type === "CHAT_MESSAGE") {
+            const chat = {
+                username: data.username,
+                message: data.message,
+                time: Date.now()
+            };
+            for (const client of rooms[data.roomId].users) {
+                client.send(
+                    JSON.stringify({
+                        type: "CHAT_MESSAGE",
+                        chat
+                    })
+                );
+            }
+        }
+        if (data.type === "DELETE_FILE") {
+            rooms[data.roomId].files =
+                rooms[data.roomId].files.filter(
+                    (file) => file.id !== data.fileId
+                );
+            for (const client of rooms[data.roomId].users) {
+                if (client !== socket) {
+                    client.send(
+                        JSON.stringify({
+                            type: "DELETE_FILE",
+                            fileId: data.fileId
+                        })
+                    );
+                }
+            }
+        }
+    });
+    socket.on("close", () => {
+        const roomId = socket.roomId;
+        const username = socket.username;
+        if (!roomId) return;
+        const room = rooms[roomId];
+        if (!room) return;
+        const index = room.users.indexOf(socket);
+        if (index !== -1) {
+            room.users.splice(index, 1);
+        }
+        const users = room.users.map((user) => ({
+            username: user.username
+        }));
+        for (const client of room.users) {
+            client.send(
+                JSON.stringify({
+                    type: "USERS_UPDATE",
+                    users
+                })
+            );
+            client.send(
+                JSON.stringify({
+                    type: "SYSTEM_MESSAGE",
+                    message: `${username} left the room`
+                })
+            );
+            console.log(`${username} left the room`);
+        }
+        if (room.users.length === 0) {
+            delete rooms[roomId];
+        }
+        console.log("Client Disconnected");
     });
 });

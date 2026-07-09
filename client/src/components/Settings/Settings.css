@@ -1,0 +1,33 @@
+.settings-panel{
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.settings-panel input{
+    padding:10px;
+    border:none;
+    border-radius:6px;
+    background:#2d2d2d;
+    color:white;
+}
+
+.settings-panel input:disabled{
+    background:#252526;
+    color:#999;
+    cursor:not-allowed;
+}
+
+.settings-panel button{
+    padding:10px;
+    background:#0e639c;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.settings-panel button:hover{
+    background:#1177bb;
+}
