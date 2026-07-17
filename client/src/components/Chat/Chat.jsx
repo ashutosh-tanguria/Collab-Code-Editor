@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Chat.css";
 import { SendHorizontal } from "lucide-react";
 
@@ -9,6 +9,7 @@ const Chat = ({
     messages,
     setMessages
 }) => {
+    const messagesRef = useRef(null);
     const [text, setText] = useState("");
     const handleSend = () => {
         if (!text.trim()) return;
@@ -22,10 +23,20 @@ const Chat = ({
         );
         setText("");
     };
+    useEffect(() => {
 
+        if (!messagesRef.current) return;
+
+        messagesRef.current.scrollTop =
+            messagesRef.current.scrollHeight;
+
+    }, [messages]);
     return (
         <div className="chat">
-            <div className="chat-messages">
+            <div
+                className="chat-messages"
+                ref={messagesRef}
+            >
                 {messages.map((msg, index) => {
                     if (msg.system) {
                         return (
@@ -52,7 +63,6 @@ const Chat = ({
                         </div>
                     );
                 })}
-
             </div>
             <div className="chat-input">
                 <input

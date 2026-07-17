@@ -5,6 +5,7 @@ import UserList from "../UserList/UserList";
 import Chat from "../Chat/Chat";
 import FileTabs from "../FileTabs/FileTabs";
 import Settings from "../Settings/Settings";
+import Explorer from "../Explorer/Explorer";
 
 const Sidebar = ({
     activePanel,
@@ -16,7 +17,9 @@ const Sidebar = ({
     setUsername,
     socket,
     messages,
-    setMessages
+    setMessages,
+    activeFileId,
+setActiveFileId
 }) => {
 
     return (
@@ -27,15 +30,14 @@ const Sidebar = ({
             />
             <div className="sidebar-content">
                 {
-                    activePanel === "explorer" && (
-                        <div className="explorer-panel">
-                            <h3>Explorer</h3>
-                            <div className="explorer-item">
-                                📁 Project Files
-                            </div>
-                        </div>
-                    )
-                }
+    activePanel === "explorer" && (
+        <Explorer
+            files={files}
+            activeFileId={activeFileId}
+            setActiveFileId={setActiveFileId}
+        />
+    )
+}
                 {
                     activePanel === "users" &&
                     <UserList users={users} />

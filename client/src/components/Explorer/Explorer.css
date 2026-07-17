@@ -1,0 +1,31 @@
+.explorer{
+    padding:14px;
+}
+
+.explorer h3{
+    font-size:14px;
+    margin-bottom:14px;
+    color:#ccc;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+}
+
+.explorer-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 10px;
+    border-radius:5px;
+    cursor:pointer;
+    color:#c5c5c5;
+    transition:.15s;
+}
+
+.explorer-item:hover{
+    background:#2d2d30;
+}
+
+.explorer-item.active{
+    background:#37373d;
+    color:#fff;
+}

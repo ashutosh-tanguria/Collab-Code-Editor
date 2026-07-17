@@ -9,15 +9,26 @@ const FileTabs = ({
     setActiveFileId,
     setFiles
 }) => {
+
+    const LANGUAGES = [
+    { name: "JavaScript", value: "javascript", ext: ".js" },
+    { name: "TypeScript", value: "typescript", ext: ".ts" },
+    { name: "Python", value: "python", ext: ".py" },
+    { name: "Java", value: "java", ext: ".java" },
+    { name: "C", value: "c", ext: ".c" },
+    { name: "C++", value: "cpp", ext: ".cpp" }
+];
     const [editingFileId, setEditingFileId] = useState(null);
     const [tempName, setTempName] = useState("");
     const handleAddFile = () => {
 
         const newFile = {
-            id: crypto.randomUUID(),
-            name: `file${files.length + 1}.js`,
-            code: ""
-        };
+    id: crypto.randomUUID(),
+    name: "newFile.js",
+    language: "javascript",
+    dirty: false,
+    code: ""
+};
         setFiles([
             ...files,
             newFile
@@ -101,7 +112,66 @@ const FileTabs = ({
                         ) : (
                             <div className="tab-content">
 
-                                <span>{file.name}</span>
+                                <div className="file-info">
+
+    <span>{file.name}</span>
+
+    <select
+        className="language-select"
+        value={file.language}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+
+            const language = e.target.value;
+
+            const extension =
+                LANGUAGES.find(
+                    (l) => l.value === language
+                ).ext;
+
+            const fileName =
+                file.name.includes(".")
+                    ? file.name.substring(
+                        0,
+                        file.name.lastIndexOf(".")
+                    )
+                    : file.name;
+
+            const updatedFile = {
+                ...file,
+                language,
+                name: fileName + extension
+            };
+
+            setFiles(
+                files.map((f) =>
+                    f.id === file.id
+                        ? updatedFile
+                        : f
+                )
+            );
+
+            socket.send(
+                JSON.stringify({
+                    type: "UPDATE_FILE_LANGUAGE",
+                    roomId,
+                    file: updatedFile
+                })
+            );
+
+        }}
+    >
+        {LANGUAGES.map((lang) => (
+            <option
+                key={lang.value}
+                value={lang.value}
+            >
+                {lang.name}
+            </option>
+        ))}
+    </select>
+
+</div>
 
                                 {file.name !== "main.js" && (
                                     <button

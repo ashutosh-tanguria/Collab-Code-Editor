@@ -6,26 +6,30 @@ import Editor from "../../components/Editor/Editor";
 import RoomHeader from "../../components/RoomHeader/RoomHeader";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import FileTabs from "../../components/FileTabs/FileTabs";
-
 const Room = () => {
+    
     const { roomId } = useParams();
     const [activePanel, setActivePanel] = useState("explorer");
     const [username, setUsername] = useState(
         localStorage.getItem("username") || "Guest"
     );
     const isRemoteUpdate = useRef(false);
-    const [files, setFiles] = useState([
-        {
-            id: crypto.randomUUID(),
-            name: "main.js",
-            code: "// Start Coding..."
-        }
-    ]);
+    
+   const [files, setFiles] = useState([
+    {
+        id: crypto.randomUUID(),
+        name: "main.js",
+        language: "javascript",
+        dirty: false,
+        code: "// Start Coding..."
+    }
+]);
 
     const [users, setUsers] = useState([]);
     const [activeFileId, setActiveFileId] = useState(null);
     const [socket, setSocket] = useState(null);
     const [messages, setMessages] = useState([]);
+   const [remoteCursors, setRemoteCursors] = useState({});
     useEffect(() => {
 
         const ws = new WebSocket("ws://localhost:8000");
@@ -45,6 +49,17 @@ const Room = () => {
         ws.addEventListener("message", (event) => {
 
             const data = JSON.parse(event.data);
+         if (data.type === "CURSOR_MOVE") {
+
+    console.log("REMOTE", data);
+
+    setRemoteCursors((prev) => ({
+        ...prev,
+        [data.username]: data
+    }));
+
+}
+
             if (data.type === "SYSTEM_MESSAGE") {
                 setMessages((prev) => [
                     ...prev,
@@ -61,12 +76,7 @@ const Room = () => {
                 ]);
             }
          
-            if (data.type === "CHAT_MESSAGE") {
-                setMessages((prev) => [
-                    ...prev,
-                    data.chat
-                ]);
-            }
+           
             if (data.type === "USERS_UPDATE") {
                 setUsers(data.users);
             }
@@ -100,7 +110,17 @@ const Room = () => {
                     )
                 );
             }
+if (data.type === "UPDATE_FILE_LANGUAGE") {
 
+    setFiles((prevFiles) =>
+        prevFiles.map((file) =>
+            file.id === data.file.id
+                ? data.file
+                : file
+        )
+    );
+
+}
            
 
             if (data.type === "DELETE_FILE") {
@@ -136,23 +156,7 @@ const Room = () => {
             }
            
 
-            if (data.type === "CHAT_MESSAGE") {
-
-                const chat = {
-                    username: data.username,
-                    message: data.message,
-                    time: Date.now()
-                };
-
-                for (const client of rooms[data.roomId].users) {
-                    client.send(
-                        JSON.stringify({
-                            type: "CHAT_MESSAGE",
-                            chat
-                        })
-                    );
-                }
-            }
+            
         });
 
         ws.addEventListener("error", (err) => {
@@ -167,15 +171,19 @@ const Room = () => {
             ws.close();
         };
     }, []);
-
     useEffect(() => {
-        if (files.length > 0 && activeFileId === null) {
-            setActiveFileId(files[0].id);
-        }
-    }, [files, activeFileId]);
-    const activeFile = files.find(
-        (file) => file.id === activeFileId
-    );
+
+    if (files.length > 0 && activeFileId === null) {
+
+        setActiveFileId(files[0].id);
+
+    }
+
+}, [files, activeFileId]);
+const activeFile = files.find(
+    (file) => file.id === activeFileId
+);
+   
     return (
         <>
             <RoomHeader roomId={roomId} />
@@ -193,6 +201,8 @@ const Room = () => {
                     socket={socket}
                     messages={messages}
                     setMessages={setMessages}
+                    activeFileId={activeFileId}
+                    setActiveFileId={setActiveFileId}
                 />
 
                 <div className="editor-section">
@@ -207,13 +217,15 @@ const Room = () => {
                     />
 
                     <Editor
-                        roomId={roomId}
-                        socket={socket}
-                        activeFile={activeFile}
-                        files={files}
-                        setFiles={setFiles}
-                        isRemoteUpdate={isRemoteUpdate}
-                    />
+    roomId={roomId}
+    socket={socket}
+    username={username}
+    activeFile={activeFile}
+    files={files}
+    setFiles={setFiles}
+    isRemoteUpdate={isRemoteUpdate}
+    remoteCursors={remoteCursors}
+/>
 
                 </div>
 

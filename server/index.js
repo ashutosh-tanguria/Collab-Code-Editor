@@ -1,7 +1,24 @@
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
 const { WebSocketServer } = require("ws");
 const rooms = require("./rooms");
-const wss = new WebSocketServer({ port: 8000 });
-console.log("WebSocket Server Started");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+const server = app.listen(8000, () => {
+    console.log("Server Started on 8000");
+});
+
+const wss = new WebSocketServer({
+    server
+});
+
+console.log("WebSocket + Express Started");
+
 
 wss.on("connection", (socket) => {
     console.log("Client Connected");
@@ -118,6 +135,35 @@ wss.on("connection", (socket) => {
                 }
             }
         }
+if (data.type === "UPDATE_FILE_LANGUAGE") {
+
+    rooms[data.roomId].files =
+        rooms[data.roomId].files.map((file) => {
+
+            if (file.id === data.file.id) {
+                return data.file;
+            }
+
+            return file;
+
+        });
+
+    for (const client of rooms[data.roomId].users) {
+
+        if (client !== socket) {
+
+            client.send(
+                JSON.stringify({
+                    type: "UPDATE_FILE_LANGUAGE",
+                    file: data.file
+                })
+            );
+
+        }
+
+    }
+
+}
 
         if (data.type === "USERNAME_CHANGE") {
             socket.username = data.username;
@@ -149,6 +195,29 @@ wss.on("connection", (socket) => {
                 );
             }
         }
+
+if (data.type === "CURSOR_MOVE") {
+    console.log("Broadcasting Cursor", data);
+
+    for (const client of rooms[data.roomId].users) {
+
+        if (client !== socket) {
+
+            client.send(
+                JSON.stringify({
+                    type: "CURSOR_MOVE",
+                    username: data.username,
+                    fileId: data.fileId,
+                    line: data.line,
+                    column: data.column
+                })
+            );
+
+        }
+
+    }
+
+}
         if (data.type === "DELETE_FILE") {
             rooms[data.roomId].files =
                 rooms[data.roomId].files.filter(

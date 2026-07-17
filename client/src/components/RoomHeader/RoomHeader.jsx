@@ -23,6 +23,16 @@ const RoomHeader = ({ roomId }) => {
       >
         {copied ? "Copied!" : "Copy Invite"}
       </button>
+      <button
+    className="copy-btn"
+    onClick={() => {
+        window.dispatchEvent(
+            new Event("download-file")
+        );
+    }}
+>
+    Download
+</button>
     </header>
   );
 };

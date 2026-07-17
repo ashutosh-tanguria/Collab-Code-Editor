@@ -17,6 +17,7 @@ body,
     display:grid;
     grid-template-columns:280px 1fr;
     height:calc(100vh - 70px);
+    overflow:hidden;
 }
 .copy-btn{
     background:#0e639c;
