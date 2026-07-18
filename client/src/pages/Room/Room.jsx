@@ -37,7 +37,7 @@ const Room = () => {
 
     useEffect(() => {
 
-        const ws = new WebSocket("ws://localhost:8000");
+        const ws = new WebSocket(import.meta.env.VITE_WS_URL);
 
         setSocket(ws);
 
