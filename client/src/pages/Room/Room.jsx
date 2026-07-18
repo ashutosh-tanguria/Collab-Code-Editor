@@ -62,16 +62,16 @@ const Room = () => {
 
             switch (data.type) {
 
-               case "CURSOR_MOVE":
+                case "CURSOR_MOVE":
 
-    console.log("REMOTE:", data);
+                    console.log("REMOTE:", data);
 
-    setRemoteCursors((prev) => ({
-        ...prev,
-        [data.username]: data
-    }));
+                    setRemoteCursors((prev) => ({
+                        ...prev,
+                        [data.username]: data
+                    }));
 
-    break;
+                    break;
 
                 case "CURSOR_REMOVE":
 
@@ -179,19 +179,19 @@ const Room = () => {
                 case "CODE_CHANGE":
 
                     if (data.fileId === activeFileId) {
-    isRemoteUpdate.current = true;
-}
+                        isRemoteUpdate.current = true;
+                    }
 
-setFiles((prevFiles) =>
-    prevFiles.map((file) =>
-        file.id === data.fileId
-            ? {
-                ...file,
-                code: data.code
-            }
-            : file
-    )
-);
+                    setFiles((prevFiles) =>
+                        prevFiles.map((file) =>
+                            file.id === data.fileId
+                                ? {
+                                    ...file,
+                                    code: data.code
+                                }
+                                : file
+                        )
+                    );
 
                     break;
 

@@ -102,79 +102,79 @@ export default function CursorWidget({
         }
         const monaco = window.monaco;
 
-const decorations = [];
+        const decorations = [];
 
-Object.values(remoteCursors).forEach((cursor) => {
-console.log("Cursor:", cursor.username);
-    if (!cursor) return;
+        Object.values(remoteCursors).forEach((cursor) => {
+            console.log("Cursor:", cursor.username);
+            if (!cursor) return;
 
-    if (cursor.username === username) return;
+            if (cursor.username === username) return;
 
-    if (cursor.fileId !== activeFile?.id) return;
+            if (cursor.fileId !== activeFile?.id) return;
 
-    if (
-        !Number.isFinite(cursor.line) ||
-        !Number.isFinite(cursor.column)
-    ) {
-        return;
-    }
+            if (
+                !Number.isFinite(cursor.line) ||
+                !Number.isFinite(cursor.column)
+            ) {
+                return;
+            }
 
-    const color = getColor(cursor.username);
+            const color = getColor(cursor.username);
 
-const classId = ensureCursorStyle(
-    cursor.username,
-    color
-);
+            const classId = ensureCursorStyle(
+                cursor.username,
+                color
+            );
 
-    decorations.push({
+            decorations.push({
 
-        range: new monaco.Range(
-            cursor.line,
-            cursor.column,
-            cursor.line,
-            cursor.column
-        ),
+                range: new monaco.Range(
+                    cursor.line,
+                    cursor.column,
+                    cursor.line,
+                    cursor.column
+                ),
 
-        options: {
+                options: {
 
-            className: "remote-cursor",
+                    className: "remote-cursor",
 
-            stickiness:
-                monaco.editor
-                    .TrackedRangeStickiness
-                    .NeverGrowsWhenTypingAtEdges,
+                    stickiness:
+                        monaco.editor
+                            .TrackedRangeStickiness
+                            .NeverGrowsWhenTypingAtEdges,
 
-            before: {
+                    before: {
 
-    content: "",
+                        content: "",
 
-    inlineClassName:
-        `cursor-${classId}-bar`
+                        inlineClassName:
+                            `cursor-${classId}-bar`
 
-},
+                    },
 
-            after: {
+                    after: {
 
-    content: ` TEST-${cursor.username}`,
+                        content: ` TEST-${cursor.username}`,
 
-    inlineClassName:
-        `cursor-${classId}-label`
+                        inlineClassName:
+                            `cursor-${classId}-label`
 
-}
+                    }
 
-        }
+                }
 
-    });
+            });
 
-});
+        });
 
-decorationsRef.current.clear();
-decorationsRef.current.set(decorations);
+        decorationsRef.current.clear();
+        decorationsRef.current.set(decorations);
     }, [
-    remoteCursors,
-    activeFile?.id,
-    username
-]);
+        remoteCursors,
+        activeFile?.id,
+        username
+    ]);
     useEffect(() => {
 
         if (!decorationsRef.current) return;

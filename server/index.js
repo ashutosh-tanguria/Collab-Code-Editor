@@ -94,7 +94,7 @@ wss.on("connection", (socket) => {
                     client.send(
                         JSON.stringify({
                             type: "CURSOR_MOVE",
-                           username: socket.username,
+                            username: socket.username,
                             fileId: data.fileId,
                             line: data.line,
                             column: data.column
@@ -189,7 +189,7 @@ wss.on("connection", (socket) => {
                 );
             }
         }
-        
+
         if (data.type === "DELETE_FILE") {
             rooms[data.roomId].files =
                 rooms[data.roomId].files.filter(
