@@ -1,13 +1,90 @@
 import { useEffect, useRef } from "react";
+import "./CursorWidget.css";
 
-export default function CursorManager({
+const COLORS = [
+    "#ff4d4f",
+    "#52c41a",
+    "#1677ff",
+    "#fa8c16",
+    "#722ed1",
+    "#13c2c2",
+    "#eb2f96",
+    "#fadb14",
+    "#2f54eb",
+    "#a0d911"
+];
+
+const injectedStyles = new Set();
+
+function sanitizeClassName(name = "") {
+
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-");
+
+}
+
+function ensureCursorStyle(username, color) {
+
+    const id = sanitizeClassName(username);
+
+    if (injectedStyles.has(id)) return id;
+
+    const style = document.createElement("style");
+
+    style.innerHTML = `
+        .cursor-${id}-bar{
+            border-left:2px solid ${color};
+            margin-left:-1px;
+            height:100%;
+        }
+
+        .cursor-${id}-label{
+            background:${color};
+            color:white;
+            font-size:11px;
+            padding:2px 6px;
+            border-radius:4px;
+            margin-left:2px;
+            white-space:nowrap;
+            font-weight:500;
+        }
+    `;
+
+    document.head.appendChild(style);
+
+    injectedStyles.add(id);
+
+    return id;
+
+}
+
+function getColor(username = "") {
+
+    let hash = 0;
+
+    for (let i = 0; i < username.length; i++) {
+        hash =
+            username.charCodeAt(i) +
+            ((hash << 5) - hash);
+    }
+
+    return COLORS[
+        Math.abs(hash) % COLORS.length
+    ];
+
+}
+
+export default function CursorWidget({
+
     editorRef,
     remoteCursors,
     activeFile,
     username
+
 }) {
 
-    const widgetsRef = useRef({});
+    const decorationsRef = useRef(null);
 
     useEffect(() => {
 
@@ -15,61 +92,100 @@ export default function CursorManager({
 
         if (!editor) return;
 
-        const existing = widgetsRef.current;
+        if (!window.monaco) return;
 
-        Object.values(existing).forEach(widget => {
-            editor.removeContentWidget(widget);
-        });
+        if (!decorationsRef.current) {
 
-        widgetsRef.current = {};
+            decorationsRef.current =
+                editor.createDecorationsCollection();
 
-        Object.values(remoteCursors).forEach(cursor => {
+        }
+        const monaco = window.monaco;
 
-            if (cursor.username === username) return;
-            if (cursor.fileId !== activeFile?.id) return;
+const decorations = [];
 
-            const node = document.createElement("div");
+Object.values(remoteCursors).forEach((cursor) => {
+console.log("Cursor:", cursor.username);
+    if (!cursor) return;
 
-            node.className = "remote-cursor-widget";
+    if (cursor.username === username) return;
 
-            node.innerHTML = `
-                <div class="remote-label">
-                    ${cursor.username}
-                </div>
-                <div class="remote-line"></div>
-            `;
+    if (cursor.fileId !== activeFile?.id) return;
 
-            const widget = {
+    if (
+        !Number.isFinite(cursor.line) ||
+        !Number.isFinite(cursor.column)
+    ) {
+        return;
+    }
 
-                getId() {
-                    return `cursor-${cursor.username}`;
-                },
+    const color = getColor(cursor.username);
 
-                getDomNode() {
-                    return node;
-                },
+const classId = ensureCursorStyle(
+    cursor.username,
+    color
+);
 
-                getPosition() {
-                    return {
-                        position: {
-                            lineNumber: cursor.line,
-                            column: cursor.column
-                        },
-                        preference: [
-                            window.monaco.editor.ContentWidgetPositionPreference.EXACT
-                        ]
-                    };
-                }
+    decorations.push({
 
-            };
+        range: new monaco.Range(
+            cursor.line,
+            cursor.column,
+            cursor.line,
+            cursor.column
+        ),
 
-            widgetsRef.current[cursor.username] = widget;
+        options: {
 
-            editor.addContentWidget(widget);
+            className: "remote-cursor",
 
-        });
+            stickiness:
+                monaco.editor
+                    .TrackedRangeStickiness
+                    .NeverGrowsWhenTypingAtEdges,
 
-    }, [remoteCursors, activeFile]);
+            before: {
+
+    content: "",
+
+    inlineClassName:
+        `cursor-${classId}-bar`
+
+},
+
+            after: {
+
+    content: ` TEST-${cursor.username}`,
+
+    inlineClassName:
+        `cursor-${classId}-label`
+
+}
+
+        }
+
+    });
+
+});
+
+decorationsRef.current.clear();
+decorationsRef.current.set(decorations);
+    }, [
+    remoteCursors,
+    activeFile?.id,
+    username
+]);
+    useEffect(() => {
+
+        if (!decorationsRef.current) return;
+
+        return () => {
+
+            decorationsRef.current.clear();
+
+        };
+
+    }, []);
 
     return null;
 

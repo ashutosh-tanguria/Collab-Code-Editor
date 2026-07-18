@@ -1,27 +1,58 @@
 import MonacoEditor from "@monaco-editor/react";
 import "./Editor.css";
-import CursorManager from "./CursorWidget";
-import { useRef, useEffect } from "react";
+import CursorWidget from "./CursorWidget";
+import { useRef, useEffect, useCallback } from "react";
 
 const Editor = ({
     roomId,
     socket,
     username,
     activeFile,
-    files,
+    // files,
     setFiles,
     isRemoteUpdate,
     remoteCursors
 }) => {
 
     const editorRef = useRef(null);
+    const cursorListenerRef = useRef(null);
 
-    const downloadFile = () => {
+    // Latest values (avoids stale closures)
+    const socketRef = useRef(socket);
+    const roomIdRef = useRef(roomId);
+    const usernameRef = useRef(username);
+    const activeFileRef = useRef(activeFile);
 
-        if (!activeFile) return;
+    useEffect(() => {
+        socketRef.current = socket;
+    }, [socket]);
+
+    useEffect(() => {
+        roomIdRef.current = roomId;
+    }, [roomId]);
+
+    useEffect(() => {
+        usernameRef.current = username;
+    }, [username]);
+
+    useEffect(() => {
+        activeFileRef.current = activeFile;
+    }, [activeFile]);
+
+    useEffect(() => {
+        return () => {
+            if (cursorListenerRef.current) {
+                cursorListenerRef.current.dispose();
+            }
+        };
+    }, []);
+
+    const downloadFile = useCallback(() => {
+
+        if (!activeFileRef.current) return;
 
         const blob = new Blob(
-            [activeFile.code],
+            [activeFileRef.current.code],
             {
                 type: "text/plain"
             }
@@ -32,7 +63,7 @@ const Editor = ({
         const a = document.createElement("a");
 
         a.href = url;
-        a.download = activeFile.name;
+        a.download = activeFileRef.current.name;
 
         document.body.appendChild(a);
 
@@ -42,9 +73,9 @@ const Editor = ({
 
         URL.revokeObjectURL(url);
 
-    };
+    }, []);
 
-    // Download event from RoomHeader
+    // Download from RoomHeader
     useEffect(() => {
 
         const handleDownload = () => {
@@ -65,14 +96,17 @@ const Editor = ({
 
         };
 
-    }, [activeFile]);
+    }, [downloadFile]);
 
-    // Prevent browser Save Page
+    // Ctrl + S
     useEffect(() => {
 
         const preventSave = (e) => {
 
-            if (e.ctrlKey && e.key.toLowerCase() === "s") {
+            if (
+                e.ctrlKey &&
+                e.key.toLowerCase() === "s"
+            ) {
 
                 e.preventDefault();
                 downloadFile();
@@ -81,111 +115,178 @@ const Editor = ({
 
         };
 
-        window.addEventListener("keydown", preventSave);
+        window.addEventListener(
+            "keydown",
+            preventSave
+        );
 
         return () => {
 
-            window.removeEventListener("keydown", preventSave);
+            window.removeEventListener(
+                "keydown",
+                preventSave
+            );
 
         };
 
-    }, [activeFile]);
-
+    }, [downloadFile]);
     const handleChange = (value) => {
 
-        if (!activeFile) return;
+    const file = activeFileRef.current;
 
-        if (isRemoteUpdate.current) {
-            isRemoteUpdate.current = false;
-            return;
-        }
+    if (!file) return;
 
-        setFiles(
-            files.map(file =>
-                file.id === activeFile.id
-                    ? {
-                        ...file,
-                        code: value
-                    }
-                    : file
-            )
-        );
+    if (isRemoteUpdate.current) {
+        isRemoteUpdate.current = false;
+        return;
+    }
 
-        socket?.send(
-            JSON.stringify({
-                type: "CODE_CHANGE",
-                roomId,
-                fileId: activeFile.id,
-                code: value
-            })
-        );
+    setFiles((prevFiles) =>
+        prevFiles.map((f) =>
+            f.id === file.id
+                ? {
+                      ...f,
+                      code: value
+                  }
+                : f
+        )
+    );
 
-    };
+    const ws = socketRef.current;
 
-    const handleEditorDidMount = (editor, monaco) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-        editorRef.current = editor;
+    ws.send(
+        JSON.stringify({
+            type: "CODE_CHANGE",
+            roomId: roomIdRef.current,
+            fileId: file.id,
+            code: value
+        })
+    );
 
-        editor.onDidChangeCursorPosition((event) => {
+};
 
-            if (!socket || !activeFile) return;
+const handleEditorDidMount = (editor, monaco) => {
 
-            socket.send(
+    editorRef.current = editor;
+    window.monaco = monaco;
+
+    if (cursorListenerRef.current) {
+        cursorListenerRef.current.dispose();
+    }
+
+    let lastLine = -1;
+    let lastColumn = -1;
+
+    cursorListenerRef.current =
+        editor.onDidChangeCursorPosition(({ position }) => {
+
+            const ws = socketRef.current;
+            const file = activeFileRef.current;
+
+            if (!ws) return;
+            if (!file) return;
+            if (ws.readyState !== WebSocket.OPEN) return;
+
+            const line = position.lineNumber;
+            const column = position.column;
+
+            if (
+                line === lastLine &&
+                column === lastColumn
+            ) {
+                return;
+            }
+
+            lastLine = line;
+            lastColumn = column;
+
+            ws.send(
                 JSON.stringify({
                     type: "CURSOR_MOVE",
-                    roomId,
-                    username,
-                    fileId: activeFile.id,
-                    line: event.position.lineNumber,
-                    column: event.position.column
+                    roomId: roomIdRef.current,
+                    username: usernameRef.current,
+                    fileId: file.id,
+                    line,
+                    column
                 })
             );
 
         });
 
-        editor.addCommand(
-
-            monaco.KeyMod.CtrlCmd |
+    editor.addCommand(
+        monaco.KeyMod.CtrlCmd |
             monaco.KeyCode.KeyS,
-
-            () => {
-
-                downloadFile();
-
-            }
-
-        );
-
-    };
-
-    return (
-        <div className="editor-container">
-
-            <CursorManager
-                editorRef={editorRef}
-                remoteCursors={remoteCursors}
-                activeFile={activeFile}
-                username={username}
-            />
-
-            <MonacoEditor
-                theme="vs-dark"
-                language={activeFile?.language || "javascript"}
-                value={activeFile?.code || ""}
-                onChange={handleChange}
-                onMount={handleEditorDidMount}
-                height="100%"
-                options={{
-                    minimap: {
-                        enabled: false
-                    },
-                    fontSize: 15,
-                    automaticLayout: true
-                }}
-            />
-
-        </div>
+        () => downloadFile()
     );
+
+};
+useEffect(() => {
+
+    if (!editorRef.current || !activeFile) return;
+
+    const position = editorRef.current.getPosition();
+
+    if (position) {
+
+        editorRef.current.setPosition(position);
+        editorRef.current.revealPositionInCenter(position);
+
+    }
+
+}, [activeFile]);
+
+useEffect(() => {
+
+    if (!editorRef.current) return;
+
+    editorRef.current.focus();
+
+}, [activeFile?.id]);
+
+return (
+
+    <div className="editor-container">
+
+        <CursorWidget
+    editorRef={editorRef}
+    remoteCursors={remoteCursors}
+    activeFile={activeFile}
+    username={username}
+/>
+        <MonacoEditor
+            // key={activeFile?.id}
+            path={activeFile?.id}
+            theme="vs-dark"
+            language={activeFile?.language || "javascript"}
+            value={activeFile?.code || ""}
+            onChange={handleChange}
+            onMount={handleEditorDidMount}
+            onValidate={() => {
+
+                if (!editorRef.current) return;
+
+                editorRef.current.focus();
+
+            }}
+            height="100%"
+            options={{
+                minimap: {
+                    enabled: false
+                },
+                fontSize: 15,
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                cursorBlinking: "smooth",
+                cursorSmoothCaretAnimation: "on",
+                smoothScrolling: true
+            }}
+        />
+
+    </div>
+
+);
 
 };
 

@@ -3,22 +3,16 @@ const cors = require("cors");
 const axios = require("axios");
 const { WebSocketServer } = require("ws");
 const rooms = require("./rooms");
-
 const app = express();
-
 app.use(cors());
 app.use(express.json());
-
 const server = app.listen(8000, () => {
     console.log("Server Started on 8000");
 });
-
 const wss = new WebSocketServer({
     server
 });
-
 console.log("WebSocket + Express Started");
-
 
 wss.on("connection", (socket) => {
     console.log("Client Connected");
@@ -39,14 +33,12 @@ wss.on("connection", (socket) => {
             socket.roomId = data.roomId;
             socket.username = data.username;
             for (const client of rooms[data.roomId].users) {
-
                 client.send(
                     JSON.stringify({
                         type: "SYSTEM_MESSAGE",
                         message: `${data.username} joined the room`
                     })
                 );
-
             }
 
             socket.send(
@@ -58,16 +50,13 @@ wss.on("connection", (socket) => {
             const users = rooms[data.roomId].users.map((user) => ({
                 username: user.username
             }));
-
             for (const client of rooms[data.roomId].users) {
-
                 client.send(
                     JSON.stringify({
                         type: "USERS_UPDATE",
                         users
                     })
                 );
-
             }
             console.log(rooms);
             console.log(rooms[data.roomId].users.length);
@@ -96,10 +85,26 @@ wss.on("connection", (socket) => {
                 }
             }
         }
-
+        if (data.type === "CURSOR_MOVE") {
+            console.log("Broadcasting Cursor", data);
+            const room = rooms[data.roomId];
+            if (!room) return;
+            for (const client of room.users) {
+                if (client !== socket) {
+                    client.send(
+                        JSON.stringify({
+                            type: "CURSOR_MOVE",
+                           username: socket.username,
+                            fileId: data.fileId,
+                            line: data.line,
+                            column: data.column
+                        })
+                    );
+                }
+            }
+        }
         if (data.type === "ADD_FILE") {
             rooms[data.roomId].files.push(data.file);
-
             for (const client of rooms[data.roomId].users) {
                 if (client !== socket) {
                     client.send(
@@ -111,7 +116,6 @@ wss.on("connection", (socket) => {
                 }
             }
         }
-
         if (data.type === "RENAME_FILE") {
             rooms[data.roomId].files =
                 rooms[data.roomId].files.map((file) => {
@@ -135,36 +139,27 @@ wss.on("connection", (socket) => {
                 }
             }
         }
-if (data.type === "UPDATE_FILE_LANGUAGE") {
+        if (data.type === "UPDATE_FILE_LANGUAGE") {
+            rooms[data.roomId].files =
+                rooms[data.roomId].files.map((file) => {
+                    if (file.id === data.file.id) {
+                        return data.file;
+                    }
+                    return file;
+                });
+            for (const client of rooms[data.roomId].users) {
 
-    rooms[data.roomId].files =
-        rooms[data.roomId].files.map((file) => {
+                if (client !== socket) {
 
-            if (file.id === data.file.id) {
-                return data.file;
+                    client.send(
+                        JSON.stringify({
+                            type: "UPDATE_FILE_LANGUAGE",
+                            file: data.file
+                        })
+                    );
+                }
             }
-
-            return file;
-
-        });
-
-    for (const client of rooms[data.roomId].users) {
-
-        if (client !== socket) {
-
-            client.send(
-                JSON.stringify({
-                    type: "UPDATE_FILE_LANGUAGE",
-                    file: data.file
-                })
-            );
-
         }
-
-    }
-
-}
-
         if (data.type === "USERNAME_CHANGE") {
             socket.username = data.username;
             const users = rooms[data.roomId].users.map((user) => ({
@@ -179,7 +174,6 @@ if (data.type === "UPDATE_FILE_LANGUAGE") {
                 );
             }
         }
-
         if (data.type === "CHAT_MESSAGE") {
             const chat = {
                 username: data.username,
@@ -195,29 +189,7 @@ if (data.type === "UPDATE_FILE_LANGUAGE") {
                 );
             }
         }
-
-if (data.type === "CURSOR_MOVE") {
-    console.log("Broadcasting Cursor", data);
-
-    for (const client of rooms[data.roomId].users) {
-
-        if (client !== socket) {
-
-            client.send(
-                JSON.stringify({
-                    type: "CURSOR_MOVE",
-                    username: data.username,
-                    fileId: data.fileId,
-                    line: data.line,
-                    column: data.column
-                })
-            );
-
-        }
-
-    }
-
-}
+        
         if (data.type === "DELETE_FILE") {
             rooms[data.roomId].files =
                 rooms[data.roomId].files.filter(
@@ -244,6 +216,15 @@ if (data.type === "CURSOR_MOVE") {
         const index = room.users.indexOf(socket);
         if (index !== -1) {
             room.users.splice(index, 1);
+        }
+        for (const client of room.users) {
+
+            client.send(
+                JSON.stringify({
+                    type: "CURSOR_REMOVE",
+                    username
+                })
+            );
         }
         const users = room.users.map((user) => ({
             username: user.username

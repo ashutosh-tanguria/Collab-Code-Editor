@@ -1,36 +1,6 @@
 .editor-container {
-    flex: 1;
+    height: 100%;
     width: 100%;
+    position: relative;
     overflow: hidden;
-}
-
-/* Remote Cursor Widget */
-
-.remote-cursor-widget {
-    position: absolute;
-    pointer-events: none;
-    z-index: 1000;
-}
-
-.remote-line {
-    width: 2px;
-    height: 20px;
-    background: #ff4757;
-}
-
-.remote-label {
-    position: absolute;
-    top: -22px;
-    left: -2px;
-
-    padding: 2px 6px;
-
-    background: #ff4757;
-    color: white;
-
-    font-size: 11px;
-    font-weight: 600;
-
-    border-radius: 4px;
-    white-space: nowrap;
 }
